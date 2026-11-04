@@ -1,5 +1,5 @@
 from src.juego import jugar_partida
-
+from src.pot_odds import entrenar_pot_odds
 
 def proximamente():
     print("Próximamente...")
@@ -17,7 +17,7 @@ def mostrar_menu():
 def menu_principal():
     acciones = {
         "1": jugar_partida,
-        "2": proximamente,
+        "2": entrenar_pot_odds,
         "3": proximamente,
         "4": proximamente,
     }

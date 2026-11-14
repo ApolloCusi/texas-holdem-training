@@ -1,9 +1,14 @@
 from src.cartas import crear_baraja, barajar, repartir, mostrar_cartas
 from src.evaluador import mejor_mano, nombre_mano
+from src.equity import calcular_equity
+from src.pot_odds import equity_necesaria
+from src.revision import revisar_mano
 
 ANTE = 10
 APUESTA = 20
 FICHAS_INICIALES = 500
+MARGEN_BOT = 5
+NOMBRES_CALLE = {3: "Flop", 4: "Turn", 5: "River"}
 
 def crear_jugador(nombre):
     return {"nombre": nombre, "fichas": FICHAS_INICIALES, "mano": [], "activo": True}
@@ -24,16 +29,28 @@ def pedir_accion():
             return opcion
         print("Opción no válida.")
 
-def bot_iguala(bot, comunitarias):
-    """El bot iguala si tiene al menos un par con las cartas que ve."""
-    categoria = mejor_mano(bot["mano"] + comunitarias)[0]
-    return categoria >= 1
+def bot_iguala(bot, comunitarias, bote_actual):
+    """El bot iguala si su equity supera las pot odds (más un pequeño margen).
+    `bote_actual` ya incluye la apuesta del humano."""
+    equity = calcular_equity(bot["mano"], comunitarias, oponentes=1, simulaciones=300)
+    necesaria = equity_necesaria(bote_actual - APUESTA, APUESTA)
+    return equity >= necesaria + MARGEN_BOT
 
-def ronda_apuestas(jugadores, comunitarias):
-    """Jugadores [0] es siempre el humano. Devuelve las fichas que se suman al bote."""
+
+def ronda_apuestas(jugadores, comunitarias, bote, registro=None):
+    """jugadores[0] es siempre el humano. Devuelve las fichas que se suman al bote."""
     humano = jugadores[0]
     bote_extra = 0
     accion = pedir_accion()
+
+    if registro is not None:
+        registro.append({
+            "calle": NOMBRES_CALLE[len(comunitarias)],
+            "accion": accion,
+            "mano": list(humano["mano"]),
+            "mesa": list(comunitarias),
+            "rivales": len(activos(jugadores)) - 1,
+        })
 
     if accion == "r":
         humano["activo"] = False
@@ -44,7 +61,7 @@ def ronda_apuestas(jugadores, comunitarias):
         for bot in jugadores[1:]:
             if not bot["activo"]:
                 continue
-            if bot_iguala(bot, comunitarias):
+            if bot_iguala(bot, comunitarias, bote + bote_extra):
                 bote_extra += cobrar(bot, APUESTA)
             else:
                 bot["activo"] = False
@@ -89,6 +106,7 @@ def jugar_mano(jugadores):
     baraja = barajar(crear_baraja())
     comunitarias = []
     bote = 0
+    registro = []
 
     for j in jugadores:
         j["activo"] = True
@@ -96,17 +114,20 @@ def jugar_mano(jugadores):
         bote += cobrar(j, ANTE)
 
     humano = jugadores[0]
-    print(f"Tu mano: {mostrar_cartas(humano['mano'])}")
+    print(f"Tus cartas: {mostrar_cartas(humano['mano'])}")
 
     for etapa, cantidad in (("Flop", 3), ("Turn", 1), ("River", 1)):
         comunitarias += repartir(baraja, cantidad)
         print(f"\n{etapa}: {mostrar_cartas(comunitarias)} | Bote: {bote}")
         if humano["activo"]:
-            bote += ronda_apuestas(jugadores, comunitarias)
+            bote += ronda_apuestas(jugadores, comunitarias, bote, registro)
         if len(activos(jugadores)) == 1:
             break
 
     resolver(jugadores, comunitarias, bote)
+
+    if registro and input("\n¿Ver la revisión de tu mano? [s/n]: ").strip().lower() == "s":
+        revisar_mano(registro)
 
 
 def jugar_partida():

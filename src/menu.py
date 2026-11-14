@@ -19,6 +19,7 @@ def sesion_equity():
     aciertos, total = entrenar_equity()
     guardar_sesion("equity", aciertos, total)
 
+from src.bankroll import simulador_bankroll
 
 # Para agregar un módulo nuevo: una línea aquí, antes de "Ver mi progreso".
 OPCIONES = [
@@ -27,6 +28,7 @@ OPCIONES = [
     ("Entrenar rangos preflop", sesion_rangos),
     ("Entrenar equity (mano vs mano)", sesion_equity),
     ("Calculadora de equity", calculadora_equity),
+    ("Simulador de bankroll", simulador_bankroll),
     ("Ver mi progreso", mostrar_progreso),
 ]
 
